@@ -7,42 +7,50 @@
 <style>
 body{
     margin:0;
-    padding:12px;
+    padding:14px;
     font-family:Arial,sans-serif;
+    background:#f6f7f9;
     display:flex;
     justify-content:center;
-    background:#f6f7f9;
 }
 
-#q{
+.wrapper{
     width:100%;
-    max-width:520px;
-    border-collapse:separate;
+    max-width:600px;
+}
+
+table{
+    width:100%;
     border-spacing:0 10px;
 }
 
 .card{
-    background:white;
+    background:#fff;
     border-radius:10px;
     box-shadow:0 1px 4px rgba(0,0,0,0.08);
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.card:hover{
+    transform:scale(1.01);
 }
 
 td{
     padding:12px 14px;
-    white-space:nowrap;
     vertical-align:middle;
 }
 
 .left{
     display:flex;
     align-items:center;
-    gap:6px;
+    gap:8px;
     font-weight:600;
 }
 
 .rate{
-    font-weight:700;
     font-size:18px;
+    font-weight:700;
 }
 
 .change{
@@ -55,175 +63,174 @@ td{
 .down{ color:#c62828; }
 
 img{
-    height:16px;
-    width:auto;
-    border:1px solid #ddd;
+    width:18px;
+    height:13px;
+    object-fit:cover;
     border-radius:2px;
+    border:1px solid #ddd;
 }
 
-.header{
-    text-align:center;
-    font-size:12px;
-    color:#666;
-    margin-bottom:10px;
+#chart{
+    margin-top:18px;
+    background:#fff;
+    border-radius:12px;
+    padding:10px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.08);
 }
 </style>
+
 </head>
 
 <body>
 
-<div>
-<div class="header" id="last">Atualizando...</div>
+<div class="wrapper">
 
 <table id="q"></table>
+
+<canvas id="chart" height="120"></canvas>
+
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 
 const q = document.getElementById("q");
-const last = document.getElementById("last");
+const ctx = document.getElementById("chart");
 
-// cache local (último valor válido)
-let cache = null;
+let chart;
 
-function render(data){
+// dados em cache
+let latestData = null;
 
-function card(flag1,flag2,name,price,pct){
-
-    const up = Number(pct) >= 0;
-
-    return `
-    <tr class="card">
-        <td>
-            <div class="left">
-                <img src="https://flagcdn.com/w40/${flag1}.png">
-                <img src="https://flagcdn.com/w40/${flag2}.png">
-                ${name}
-            </div>
-        </td>
-
-        <td>
-            <span class="rate">${Number(price).toFixed(4)}</span>
-            <span class="change ${up ? 'up' : 'down'}">
-                ${up ? '▲' : '▼'}
-                ${up ? '+' : ''}${Number(pct).toFixed(2)}%
-            </span>
-        </td>
-    </tr>`;
+// FIX BANDEIRAS (mesmo tamanho sempre)
+function flag(code){
+    return `https://flagcdn.com/h20/${code}.png`;
 }
+
+// CARD
+function card(flag1, flag2, name, price, pct, key){
+
+const up = Number(pct) >= 0;
+
+return `
+<tr class="card" data-key="${key}">
+<td>
+<div class="left">
+<img src="${flag(flag1)}">
+<img src="${flag(flag2)}">
+${name}
+</div>
+</td>
+
+<td>
+<span class="rate">${Number(price).toFixed(4)}</span>
+<span class="change ${up ? 'up':'down'}">
+${up ? '▲' : '▼'}
+${up ? '+' : ''}${Number(pct).toFixed(2)}%
+</span>
+</td>
+</tr>`;
+}
+
+// cria gráfico intraday
+function renderChart(labels, values, label){
+
+if(chart) chart.destroy();
+
+chart = new Chart(ctx, {
+type:'line',
+data:{
+labels:labels,
+datasets:[{
+label:label,
+data:values,
+borderColor:'#1a73e8',
+backgroundColor:'rgba(26,115,232,0.1)',
+tension:0.25,
+pointRadius:0
+}]
+},
+options:{
+responsive:true,
+plugins:{
+legend:{ display:false }
+},
+interaction:{
+mode:'index',
+intersect:false
+},
+scales:{
+x:{ display:false },
+y:{ display:true }
+}
+}
+});
+}
+
+// busca histórico (intraday simplificado)
+async function fetchHistory(pair){
+
+// AwesomeAPI histórico diário (últimos pontos)
+const url = `https://economia.awesomeapi.com.br/json/daily/${pair}/30`;
+
+const r = await fetch(url);
+const d = await r.json();
+
+const labels = d.map(x => new Date(x.timestamp*1000).toLocaleDateString()).reverse();
+const values = d.map(x => Number(x.bid)).reverse();
+
+return {labels, values};
+}
+
+// MAIN DATA
+async function load(){
+
+const r = await fetch(
+"https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,USD-EUR",
+{ cache:"no-store" }
+);
+
+const d = await r.json();
+
+latestData = d;
 
 q.innerHTML =
-    card("us","br","USD/BRL", data.usdbrl.price, data.usdbrl.pct) +
-    card("eu","br","EUR/BRL", data.eurbrl.price, data.eurbrl.pct) +
-    card("us","eu","USD/EUR", data.usdeur.price, data.usdeur.pct);
+card("us","br","USD/BRL", d.USDBRL.bid, d.USDBRL.pctChange,"USDBRL") +
+card("eu","br","EUR/BRL", d.EURBRL.bid, d.EURBRL.pctChange,"EURBRL") +
+card("us","eu","USD/EUR", d.USDEUR.bid, d.USDEUR.pctChange,"USDEUR");
 
-last.textContent =
-"Última atualização: " + new Date().toLocaleTimeString();
-
-cache = data;
+// gráfico inicial (USD/BRL)
+const h = await fetchHistory("USD-BRL");
+renderChart(h.labels, h.values, "USD/BRL");
 
 }
 
-// ===== API 1 (AwesomeAPI - principal) =====
-async function fetchAwesome(){
+// hover troca gráfico
+document.addEventListener("mouseover", async (e)=>{
 
-const url =
-"https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,USD-EUR";
+const row = e.target.closest("tr");
+if(!row) return;
 
-const r = await fetch(url, { cache: "no-store" });
+const key = row.dataset.key;
+if(!key) return;
 
-if(!r.ok) throw new Error("AwesomeAPI falhou");
-
-const d = await r.json();
-
-return {
-    usdbrl: {
-        price: d.USDBRL.bid,
-        pct: d.USDBRL.pctChange
-    },
-    eurbrl: {
-        price: d.EURBRL.bid,
-        pct: d.EURBRL.pctChange
-    },
-    usdeur: {
-        price: d.USDEUR.bid,
-        pct: d.USDEUR.pctChange
-    }
+const pairMap = {
+USDBRL:"USD-BRL",
+EURBRL:"EUR-BRL",
+USDEUR:"USD-EUR"
 };
 
-}
+const pair = pairMap[key];
+if(!pair) return;
 
-// ===== API 2 (Fallback ECB - estável) =====
-async function fetchECB(){
+const h = await fetchHistory(pair);
+renderChart(h.labels, h.values, pair);
 
-const r = await fetch("https://api.frankfurter.app/latest?from=USD");
+});
 
-if(!r.ok) throw new Error("ECB falhou");
-
-const d = await r.json();
-
-const usdbrl = await fetch("https://api.frankfurter.app/latest?from=BRL");
-const b = await usdbrl.json();
-
-return {
-    usdbrl: {
-        price: 1 / d.rates.BRL,
-        pct: 0
-    },
-    eurbrl: {
-        price: 1 / b.rates.EUR,
-        pct: 0
-    },
-    usdeur: {
-        price: d.rates.EUR,
-        pct: 0
-    }
-};
-
-}
-
-// ===== CONTROLADOR PRINCIPAL =====
-async function update(){
-
-try{
-
-let data;
-
-try{
-    data = await fetchAwesome();
-}catch(e1){
-    console.warn("Fallback ECB ativado");
-    data = await fetchECB();
-}
-
-// salva cache válido
-cache = data;
-
-render(data);
-
-}catch(e){
-
-console.error("Erro total:", e);
-
-// usa cache se existir
-if(cache){
-    render(cache);
-    last.textContent =
-    "Offline (cache) - " + new Date().toLocaleTimeString();
-}else{
-    q.innerHTML =
-    "<tr><td>Erro ao carregar dados</td></tr>";
-}
-
-}
-
-}
-
-// init
-update();
-
-// atualização inteligente (não agressiva)
-setInterval(update, 60000);
+load();
+setInterval(load, 60000);
 
 </script>
 
