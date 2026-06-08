@@ -3,124 +3,147 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+
 <style>
 body{
     margin:0;
-    padding:6px;
+    padding:12px;
     font-family:Arial,sans-serif;
-    font-size:18px;
     display:flex;
     justify-content:center;
+    background:#f6f7f9;
 }
 
-table{
-    border-collapse:collapse;
+#q{
+    width:100%;
+    max-width:520px;
+    border-collapse:separate;
+    border-spacing:0 10px;
+}
+
+.card{
+    background:white;
+    border-radius:10px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.08);
 }
 
 td{
-    padding:6px 8px;
+    padding:12px 14px;
     white-space:nowrap;
     vertical-align:middle;
 }
 
-.rate{
-    font-weight:700;
-}
-
-.change{
-    font-size:14px;
-    margin-left:6px;
+.left{
+    display:flex;
+    align-items:center;
+    gap:6px;
     font-weight:600;
 }
 
-.up{
-    color:#006400;
+.rate{
+    font-weight:700;
+    font-size:18px;
 }
 
-.down{
-    color:#8B0000;
+.change{
+    font-size:13px;
+    margin-left:8px;
+    font-weight:600;
 }
+
+.up{ color:#0a8f3c; }
+.down{ color:#c62828; }
 
 img{
-    height:14px;
+    height:16px;
     width:auto;
-    vertical-align:-2px;
-    border:1px solid #d0d0d0;
+    border:1px solid #ddd;
     border-radius:2px;
+}
+
+.header{
+    text-align:center;
+    font-size:12px;
+    color:#666;
+    margin-bottom:10px;
 }
 </style>
 </head>
+
 <body>
 
-<table id="q">
-<tr><td>Carregando...</td></tr>
-</table>
+<div>
+<div class="header" id="last">Atualizando...</div>
+
+<table id="q"></table>
+</div>
 
 <script>
+
+const q = document.getElementById("q");
+const last = document.getElementById("last");
+
 async function c(){
+
 try{
 
-const r = await fetch(
-    "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,USD-EUR"
-);
+const url =
+"https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,USD-EUR?t=" + Date.now();
+
+const r = await fetch(url, {
+    cache: "no-store"
+});
 
 const d = await r.json();
 
-function linha(flag1,flag2,nome,cotacao,pct){
+function card(flag1,flag2,nome,valor,pct){
 
-    const up = pct >= 0;
+    const up = Number(pct) >= 0;
 
     return `
-    <tr>
+    <tr class="card">
         <td>
-            <img src="https://flagcdn.com/w40/${flag1}.png">
-            <img src="https://flagcdn.com/w40/${flag2}.png">
-            ${nome}
+            <div class="left">
+                <img src="https://flagcdn.com/w40/${flag1}.png">
+                <img src="https://flagcdn.com/w40/${flag2}.png">
+                ${nome}
+            </div>
         </td>
+
         <td>
-            <span class="rate">${cotacao.toFixed(4)}</span>
+            <span class="rate">${Number(valor).toFixed(4)}</span>
             <span class="change ${up ? 'up' : 'down'}">
                 ${up ? '▲' : '▼'}
-                ${up ? '+' : ''}${pct.toFixed(2)}%
+                ${up ? '+' : ''}${Number(pct).toFixed(2)}%
             </span>
         </td>
     </tr>`;
 }
 
 q.innerHTML =
-    linha(
-        "us",
-        "br",
-        "USD/BRL",
-        Number(d.USDBRL.bid),
-        Number(d.USDBRL.pctChange)
-    ) +
-    linha(
-        "eu",
-        "br",
-        "EUR/BRL",
-        Number(d.EURBRL.bid),
-        Number(d.EURBRL.pctChange)
-    ) +
-    linha(
-        "us",
-        "eu",
-        "USD/EUR",
-        Number(d.USDEUR.bid),
-        Number(d.USDEUR.pctChange)
-    );
+    card("us","br","USD/BRL", d.USDBRL.bid, d.USDBRL.pctChange) +
+    card("eu","br","EUR/BRL", d.EURBRL.bid, d.EURBRL.pctChange) +
+    card("us","eu","USD/EUR", d.USDEUR.bid, d.USDEUR.pctChange);
+
+last.textContent =
+"Última atualização: " +
+new Date().toLocaleTimeString();
 
 }catch(e){
 
-    console.error(e);
+console.error(e);
 
-    q.innerHTML =
-        "<tr><td>Erro ao carregar</td></tr>";
+q.innerHTML =
+"<tr><td>Erro ao carregar dados</td></tr>";
+
+last.textContent = "Falha na atualização";
 }
+
 }
 
 c();
-setInterval(c,300000);
+setInterval(c, 30000);
+
 </script>
 
 </body>
