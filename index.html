@@ -80,12 +80,15 @@ img{
 
 <script>
 
-const q = <script>
-
 const q = document.getElementById("q");
 const last = document.getElementById("last");
 
-function linha(flag1, flag2, nome, cotacao, pct) {
+// cache local (último valor válido)
+let cache = null;
+
+function render(data){
+
+function card(flag1,flag2,name,price,pct){
 
     const up = Number(pct) >= 0;
 
@@ -95,12 +98,12 @@ function linha(flag1, flag2, nome, cotacao, pct) {
             <div class="left">
                 <img src="https://flagcdn.com/w40/${flag1}.png">
                 <img src="https://flagcdn.com/w40/${flag2}.png">
-                ${nome}
+                ${name}
             </div>
         </td>
 
         <td>
-            <span class="rate">${Number(cotacao).toFixed(4)}</span>
+            <span class="rate">${Number(price).toFixed(4)}</span>
             <span class="change ${up ? 'up' : 'down'}">
                 ${up ? '▲' : '▼'}
                 ${up ? '+' : ''}${Number(pct).toFixed(2)}%
@@ -109,58 +112,118 @@ function linha(flag1, flag2, nome, cotacao, pct) {
     </tr>`;
 }
 
-async function c() {
+q.innerHTML =
+    card("us","br","USD/BRL", data.usdbrl.price, data.usdbrl.pct) +
+    card("eu","br","EUR/BRL", data.eurbrl.price, data.eurbrl.pct) +
+    card("us","eu","USD/EUR", data.usdeur.price, data.usdeur.pct);
 
-    try {
+last.textContent =
+"Última atualização: " + new Date().toLocaleTimeString();
 
-        const url =
-        "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,USD-EUR";
+cache = data;
 
-        const r = await fetch(url, { cache: "no-store" });
-
-        if (!r.ok) {
-            throw new Error("HTTP error: " + r.status);
-        }
-
-        const d = await r.json();
-
-        console.log("API response:", d);
-
-        // segurança: evita crash se algum par vier vazio
-        const usdbrl = d?.USDBRL;
-        const eurbrl = d?.EURBRL;
-        const usdeur = d?.USDEUR;
-
-        if (!usdbrl || !eurbrl || !usdeur) {
-            throw new Error("Dados incompletos da API");
-        }
-
-        q.innerHTML =
-            linha("us","br","USD/BRL", usdbrl.bid, usdbrl.pctChange) +
-            linha("eu","br","EUR/BRL", eurbrl.bid, eurbrl.pctChange) +
-            linha("us","eu","USD/EUR", usdeur.bid, usdeur.pctChange);
-
-        last.textContent =
-        "Última atualização: " + new Date().toLocaleTimeString();
-
-    } catch (e) {
-
-        console.error("Erro:", e);
-
-        q.innerHTML = `
-        <tr><td style="color:red;font-weight:600">
-        Erro ao carregar dados (ver console)
-        </td></tr>`;
-
-        last.textContent = "Falha na atualização";
-    }
 }
 
-// primeira execução
-c();
+// ===== API 1 (AwesomeAPI - principal) =====
+async function fetchAwesome(){
 
-// refresh mais seguro
-setInterval(c, 30000);
+const url =
+"https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,USD-EUR";
+
+const r = await fetch(url, { cache: "no-store" });
+
+if(!r.ok) throw new Error("AwesomeAPI falhou");
+
+const d = await r.json();
+
+return {
+    usdbrl: {
+        price: d.USDBRL.bid,
+        pct: d.USDBRL.pctChange
+    },
+    eurbrl: {
+        price: d.EURBRL.bid,
+        pct: d.EURBRL.pctChange
+    },
+    usdeur: {
+        price: d.USDEUR.bid,
+        pct: d.USDEUR.pctChange
+    }
+};
+
+}
+
+// ===== API 2 (Fallback ECB - estável) =====
+async function fetchECB(){
+
+const r = await fetch("https://api.frankfurter.app/latest?from=USD");
+
+if(!r.ok) throw new Error("ECB falhou");
+
+const d = await r.json();
+
+const usdbrl = await fetch("https://api.frankfurter.app/latest?from=BRL");
+const b = await usdbrl.json();
+
+return {
+    usdbrl: {
+        price: 1 / d.rates.BRL,
+        pct: 0
+    },
+    eurbrl: {
+        price: 1 / b.rates.EUR,
+        pct: 0
+    },
+    usdeur: {
+        price: d.rates.EUR,
+        pct: 0
+    }
+};
+
+}
+
+// ===== CONTROLADOR PRINCIPAL =====
+async function update(){
+
+try{
+
+let data;
+
+try{
+    data = await fetchAwesome();
+}catch(e1){
+    console.warn("Fallback ECB ativado");
+    data = await fetchECB();
+}
+
+// salva cache válido
+cache = data;
+
+render(data);
+
+}catch(e){
+
+console.error("Erro total:", e);
+
+// usa cache se existir
+if(cache){
+    render(cache);
+    last.textContent =
+    "Offline (cache) - " + new Date().toLocaleTimeString();
+}else{
+    q.innerHTML =
+    "<tr><td>Erro ao carregar dados</td></tr>";
+}
+
+}
+
+}
+
+// init
+update();
+
+// atualização inteligente (não agressiva)
+setInterval(update, 60000);
 
 </script>
 
