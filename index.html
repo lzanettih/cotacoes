@@ -5,32 +5,114 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-body{margin:0;padding:4px;font-family:Arial,sans-serif}
-table{width:100%;border-collapse:collapse}
-td{padding:4px 0;vertical-align:middle}
-td:last-child{text-align:right;font-weight:700}
-img{height:12px;vertical-align:middle}
+body{
+    margin:0;
+    padding:6px;
+    font-family:Arial,sans-serif;
+    font-size:18px;
+    display:flex;
+    justify-content:center;
+}
+table{
+    border-collapse:collapse;
+}
+td{
+    padding:6px 8px;
+    white-space:nowrap;
+}
+td:last-child{
+    font-weight:700;
+}
+img{
+    height:16px;
+    vertical-align:-2px;
+}
+.up{
+    color:#006400;
+}
+.down{
+    color:#8B0000;
+}
 </style>
 </head>
 <body>
-<table id="q"><tr><td>Carregando...</td></tr></table>
+
+<table id="q">
+<tr><td>Carregando...</td></tr>
+</table>
+
 <script>
 async function c(){
 try{
-const r=await fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL");
+
+const r=await fetch(
+"https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL"
+);
+
 const d=await r.json();
+
 const usd=Number(d.USDBRL.bid);
 const eur=Number(d.EURBRL.bid);
-const ue=usd/eur;
+const usdeur=usd/eur;
+
+const usdPct=Number(d.USDBRL.pctChange);
+const eurPct=Number(d.EURBRL.pctChange);
+
+const usdClass=usdPct>=0?"up":"down";
+const eurClass=eurPct>=0?"up":"down";
+
+const usdIcon=usdPct>=0?"📈":"📉";
+const eurIcon=eurPct>=0?"📈":"📉";
+
 q.innerHTML=`
-<tr><td><img src="https://flagcdn.com/16x12/us.png"> <img src="https://flagcdn.com/16x12/br.png"> USD/BRL</td><td>${usd.toFixed(4)}</td></tr>
-<tr><td><img src="https://flagcdn.com/16x12/eu.png"> <img src="https://flagcdn.com/16x12/br.png"> EUR/BRL</td><td>${eur.toFixed(4)}</td></tr>
-<tr><td><img src="https://flagcdn.com/16x12/us.png"> <img src="https://flagcdn.com/16x12/eu.png"> USD/EUR</td><td>${ue.toFixed(4)}</td></tr>`;
+<tr>
+<td>
+<img src="https://flagcdn.com/16x12/us.png">
+<img src="https://flagcdn.com/16x12/br.png">
+USD/BRL
+</td>
+<td>
+${usd.toFixed(4)}
+<span class="${usdClass}">
+${usdIcon} ${usdPct>0?"+":""}${usdPct.toFixed(2)}%
+</span>
+</td>
+</tr>
+
+<tr>
+<td>
+<img src="https://flagcdn.com/16x12/eu.png">
+<img src="https://flagcdn.com/16x12/br.png">
+EUR/BRL
+</td>
+<td>
+${eur.toFixed(4)}
+<span class="${eurClass}">
+${eurIcon} ${eurPct>0?"+":""}${eurPct.toFixed(2)}%
+</span>
+</td>
+</tr>
+
+<tr>
+<td>
+<img src="https://flagcdn.com/16x12/us.png">
+<img src="https://flagcdn.com/16x12/eu.png">
+USD/EUR
+</td>
+<td>
+${usdeur.toFixed(4)}
+</td>
+</tr>
+`;
+
 }catch{
 q.innerHTML="<tr><td>Erro ao carregar</td></tr>";
-}}
+}
+}
+
 c();
 setInterval(c,300000);
 </script>
+
 </body>
 </html>
