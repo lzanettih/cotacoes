@@ -156,19 +156,68 @@ const d = await r.json();
 // pega só últimos 7 dias
 const last7 = d.slice(0,7).reverse();
 
-const labels = last7.map(x =>
-new Date(x.timestamp*1000).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})
-);
+const labels = last7.map(x =><script>
 
-const values = last7.map(x => Number(x.bid));
+const q = document.getElementById("q");
+const modalEl = document.getElementById("modal");
+const ctx = document.getElementById("chart");
 
-return { labels, values };
+let chart = null;
+
+// flags consistentes
+const flag = c =>
+`https://flagcdn.com/h20/${c}.png`;
+
+// cards
+function card(a,b,name,price,pct,key){
+
+const up = Number(pct) >= 0;
+
+return `
+<tr class="card" data-pair="${key}">
+<td>
+<div class="left">
+<img src="${flag(a)}">
+<img src="${flag(b)}">
+${name}
+</div>
+</td>
+
+<td>
+<span class="rate">${Number(price).toFixed(4)}</span>
+<span class="${up?'up':'down'}">
+${up?'▲':'▼'}${Number(pct).toFixed(2)}%
+</span>
+</td>
+</tr>`;
 }
 
 //
-// 📈 RENDER GRÁFICO (COMPACTO)
+// 📊 7 dias (AwesomeAPI)
 //
-function renderChart(pair, labels, values){
+async function fetchWeek(pair){
+
+const url = `https://economia.awesomeapi.com.br/json/daily/${pair}/30`;
+
+const r = await fetch(url, { cache:"no-store" });
+const d = await r.json();
+
+const last7 = d.slice(0,7).reverse();
+
+return {
+labels: last7.map(x =>
+new Date(x.timestamp*1000)
+.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})
+),
+values: last7.map(x => Number(x.bid))
+};
+
+}
+
+//
+// 📈 gráfico compacto
+//
+function renderChart(labels, values){
 
 if(chart) chart.destroy();
 
@@ -189,10 +238,9 @@ options:{
 responsive:true,
 maintainAspectRatio:false,
 plugins:{ legend:{display:false} },
-interaction:{ mode:'index', intersect:false },
 scales:{
 x:{ display:false },
-y:{ display:false }   // 👈 MAIS COMPACTO AINDA
+y:{ display:false }
 }
 }
 });
@@ -200,27 +248,27 @@ y:{ display:false }   // 👈 MAIS COMPACTO AINDA
 }
 
 //
-// 🪟 OPEN POPUP
+// 🪟 modal
 //
-const modal = document.getElementById("modal");
+function openModal(labels, values){
 
-function openModal(pair, labels, values){
-
-modal.style.display = "flex";
-renderChart(pair, labels, values);
+modalEl.style.display = "flex";
+renderChart(labels, values);
 
 }
 
-modal.onclick = (e)=>{
-if(e.target === modal){
-modal.style.display = "none";
+modalEl.onclick = (e)=>{
+if(e.target === modalEl){
+modalEl.style.display = "none";
 }
 };
 
 //
-// 🌐 LOAD PRINCIPAL
+// 🌐 load principal
 //
 async function load(){
+
+try{
 
 const r = await fetch(
 "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,USD-EUR",
@@ -234,10 +282,15 @@ card("us","br","USD/BRL",d.USDBRL.bid,d.USDBRL.pctChange,"USD-BRL") +
 card("eu","br","EUR/BRL",d.EURBRL.bid,d.EURBRL.pctChange,"EUR-BRL") +
 card("us","eu","USD/EUR",d.USDEUR.bid,d.USDEUR.pctChange,"USD-EUR");
 
+}catch(e){
+console.error(e);
+q.innerHTML = "<tr><td>Erro ao carregar dados</td></tr>";
+}
+
 }
 
 //
-// 🖱️ CLICK -> POPUP + GRÁFICO 7D
+// 🖱️ click -> gráfico
 //
 document.addEventListener("click", async (e)=>{
 
@@ -247,9 +300,14 @@ if(!row) return;
 const pair = row.dataset.pair;
 if(!pair) return;
 
-const data = await fetchWeek(pair);
+try{
 
-openModal(pair, data.labels, data.values);
+const data = await fetchWeek(pair);
+openModal(data.labels, data.values);
+
+}catch(e){
+console.error(e);
+}
 
 });
 
