@@ -80,23 +80,12 @@ img{
 
 <script>
 
+const q = <script>
+
 const q = document.getElementById("q");
 const last = document.getElementById("last");
 
-async function c(){
-
-try{
-
-const url =
-"https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,USD-EUR?t=" + Date.now();
-
-const r = await fetch(url, {
-    cache: "no-store"
-});
-
-const d = await r.json();
-
-function card(flag1,flag2,nome,valor,pct){
+function linha(flag1, flag2, nome, cotacao, pct) {
 
     const up = Number(pct) >= 0;
 
@@ -111,7 +100,7 @@ function card(flag1,flag2,nome,valor,pct){
         </td>
 
         <td>
-            <span class="rate">${Number(valor).toFixed(4)}</span>
+            <span class="rate">${Number(cotacao).toFixed(4)}</span>
             <span class="change ${up ? 'up' : 'down'}">
                 ${up ? '▲' : '▼'}
                 ${up ? '+' : ''}${Number(pct).toFixed(2)}%
@@ -120,28 +109,57 @@ function card(flag1,flag2,nome,valor,pct){
     </tr>`;
 }
 
-q.innerHTML =
-    card("us","br","USD/BRL", d.USDBRL.bid, d.USDBRL.pctChange) +
-    card("eu","br","EUR/BRL", d.EURBRL.bid, d.EURBRL.pctChange) +
-    card("us","eu","USD/EUR", d.USDEUR.bid, d.USDEUR.pctChange);
+async function c() {
 
-last.textContent =
-"Última atualização: " +
-new Date().toLocaleTimeString();
+    try {
 
-}catch(e){
+        const url =
+        "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,USD-EUR";
 
-console.error(e);
+        const r = await fetch(url, { cache: "no-store" });
 
-q.innerHTML =
-"<tr><td>Erro ao carregar dados</td></tr>";
+        if (!r.ok) {
+            throw new Error("HTTP error: " + r.status);
+        }
 
-last.textContent = "Falha na atualização";
+        const d = await r.json();
+
+        console.log("API response:", d);
+
+        // segurança: evita crash se algum par vier vazio
+        const usdbrl = d?.USDBRL;
+        const eurbrl = d?.EURBRL;
+        const usdeur = d?.USDEUR;
+
+        if (!usdbrl || !eurbrl || !usdeur) {
+            throw new Error("Dados incompletos da API");
+        }
+
+        q.innerHTML =
+            linha("us","br","USD/BRL", usdbrl.bid, usdbrl.pctChange) +
+            linha("eu","br","EUR/BRL", eurbrl.bid, eurbrl.pctChange) +
+            linha("us","eu","USD/EUR", usdeur.bid, usdeur.pctChange);
+
+        last.textContent =
+        "Última atualização: " + new Date().toLocaleTimeString();
+
+    } catch (e) {
+
+        console.error("Erro:", e);
+
+        q.innerHTML = `
+        <tr><td style="color:red;font-weight:600">
+        Erro ao carregar dados (ver console)
+        </td></tr>`;
+
+        last.textContent = "Falha na atualização";
+    }
 }
 
-}
-
+// primeira execução
 c();
+
+// refresh mais seguro
 setInterval(c, 30000);
 
 </script>
