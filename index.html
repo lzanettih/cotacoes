@@ -1,11 +1,86 @@
 <!DOCTYPE html>
-<html>
+
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Teste</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Cotações</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    max-width: 300px;
+}
+
+table{
+    width:100%;
+}
+
+td{
+    padding:6px;
+}
+
+td:last-child{
+    text-align:right;
+    font-weight:bold;
+}
+
+#status{
+    color:#666;
+    margin-top:10px;
+    font-size:12px;
+}
+</style>
+
 </head>
 <body>
-<h1>Funcionou!</h1>
-<p>Se você está vendo esta mensagem, o GitHub Pages está funcionando.</p>
+
+<h3>Cotações</h3>
+
+<table id="quotes">
+<tr><td colspan="2">Carregando...</td></tr>
+</table>
+
+<div id="status"></div>
+
+<script>
+async function carregar() {
+
+    try {
+
+        const r = await fetch(
+            "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL"
+        );
+
+        const d = await r.json();
+
+        const usdbrl = Number(d.USDBRL.bid);
+        const eurbrl = Number(d.EURBRL.bid);
+
+        const usdeur = usdbrl / eurbrl;
+
+        document.getElementById("quotes").innerHTML = `
+            <tr><td>USD/BRL</td><td>${usdbrl.toFixed(4)}</td></tr>
+            <tr><td>EUR/BRL</td><td>${eurbrl.toFixed(4)}</td></tr>
+            <tr><td>USD/EUR</td><td>${usdeur.toFixed(4)}</td></tr>
+        `;
+
+        document.getElementById("status").textContent =
+            "Atualizado: " + new Date().toLocaleTimeString("pt-BR");
+
+    } catch (e) {
+
+        console.error(e);
+
+        document.getElementById("quotes").innerHTML =
+            "<tr><td colspan='2'>Erro ao carregar.</td></tr>";
+    }
+}
+
+carregar();
+</script>
+
 </body>
 </html>
