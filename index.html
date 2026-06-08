@@ -143,19 +143,32 @@ ${up?'▲':'▼'}${Number(pct).toFixed(2)}%
 </tr>`;
 }
 
-// gráfico simulado estável
-function renderChart(pair, price){
+//
+// 📊 GRÁFICO 7 DIAS (REAL)
+//
+async function fetchWeek(pair){
 
-const labels = [];
-const values = [];
+const url = `https://economia.awesomeapi.com.br/json/daily/${pair}/30`;
 
-let p = Number(price);
+const r = await fetch(url, { cache:"no-store" });
+const d = await r.json();
 
-for(let i=30;i>=0;i--){
-p += (Math.random()-0.5)*0.01;
-labels.push(`${i}m`);
-values.push(p);
+// pega só últimos 7 dias
+const last7 = d.slice(0,7).reverse();
+
+const labels = last7.map(x =>
+new Date(x.timestamp*1000).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})
+);
+
+const values = last7.map(x => Number(x.bid));
+
+return { labels, values };
 }
+
+//
+// 📈 RENDER GRÁFICO (COMPACTO)
+//
+function renderChart(pair, labels, values){
 
 if(chart) chart.destroy();
 
@@ -166,36 +179,47 @@ labels,
 datasets:[{
 data:values,
 borderColor:'#1a73e8',
-backgroundColor:'rgba(26,115,232,0.1)',
+backgroundColor:'rgba(26,115,232,0.08)',
 tension:0.3,
-pointRadius:0
+pointRadius:0,
+borderWidth:2
 }]
 },
 options:{
-plugins:{legend:{display:false}},
-interaction:{mode:'index',intersect:false},
+responsive:true,
+maintainAspectRatio:false,
+plugins:{ legend:{display:false} },
+interaction:{ mode:'index', intersect:false },
 scales:{
-x:{display:false},
-y:{display:true}
+x:{ display:false },
+y:{ display:false }   // 👈 MAIS COMPACTO AINDA
 }
 }
 });
+
 }
 
-// abrir popup
-function openModal(pair, price){
+//
+// 🪟 OPEN POPUP
+//
+const modal = document.getElementById("modal");
+
+function openModal(pair, labels, values){
+
 modal.style.display = "flex";
-renderChart(pair, price);
+renderChart(pair, labels, values);
+
 }
 
-// fechar popup
 modal.onclick = (e)=>{
 if(e.target === modal){
 modal.style.display = "none";
 }
 };
 
-// load API
+//
+// 🌐 LOAD PRINCIPAL
+//
 async function load(){
 
 const r = await fetch(
@@ -212,8 +236,10 @@ card("us","eu","USD/EUR",d.USDEUR.bid,d.USDEUR.pctChange,"USD-EUR");
 
 }
 
-// clique abre popup
-document.addEventListener("click",(e)=>{
+//
+// 🖱️ CLICK -> POPUP + GRÁFICO 7D
+//
+document.addEventListener("click", async (e)=>{
 
 const row = e.target.closest("tr");
 if(!row) return;
@@ -221,9 +247,9 @@ if(!row) return;
 const pair = row.dataset.pair;
 if(!pair) return;
 
-const price = row.querySelector(".rate").textContent;
+const data = await fetchWeek(pair);
 
-openModal(pair, price);
+openModal(pair, data.labels, data.values);
 
 });
 
