@@ -115,11 +115,9 @@ const ctx = document.getElementById("chart");
 
 let chart = null;
 
-// flags consistentes
 const flag = c =>
 `https://flagcdn.com/h20/${c}.png`;
 
-// card compacto
 function card(a,b,name,price,pct,key){
 
 const up = Number(pct) >= 0;
@@ -144,56 +142,7 @@ ${up?'▲':'▼'}${Number(pct).toFixed(2)}%
 }
 
 //
-// 📊 GRÁFICO 7 DIAS (REAL)
-//
-async function fetchWeek(pair){
-
-const url = `https://economia.awesomeapi.com.br/json/daily/${pair}/30`;
-
-const r = await fetch(url, { cache:"no-store" });
-const d = await r.json();
-
-// pega só últimos 7 dias
-const last7 = d.slice(0,7).reverse();
-
-const labels = last7.map(x =><script>
-
-const q = document.getElementById("q");
-const modalEl = document.getElementById("modal");
-const ctx = document.getElementById("chart");
-
-let chart = null;
-
-// flags consistentes
-const flag = c =>
-`https://flagcdn.com/h20/${c}.png`;
-
-// cards
-function card(a,b,name,price,pct,key){
-
-const up = Number(pct) >= 0;
-
-return `
-<tr class="card" data-pair="${key}">
-<td>
-<div class="left">
-<img src="${flag(a)}">
-<img src="${flag(b)}">
-${name}
-</div>
-</td>
-
-<td>
-<span class="rate">${Number(price).toFixed(4)}</span>
-<span class="${up?'up':'down'}">
-${up?'▲':'▼'}${Number(pct).toFixed(2)}%
-</span>
-</td>
-</tr>`;
-}
-
-//
-// 📊 7 dias (AwesomeAPI)
+// 📊 HISTÓRICO 7 DIAS
 //
 async function fetchWeek(pair){
 
@@ -215,7 +164,7 @@ values: last7.map(x => Number(x.bid))
 }
 
 //
-// 📈 gráfico compacto
+// 📈 GRÁFICO
 //
 function renderChart(labels, values){
 
@@ -248,23 +197,23 @@ y:{ display:false }
 }
 
 //
-// 🪟 modal
+// 🪟 MODAL
 //
 function openModal(labels, values){
 
-modalEl.style.display = "flex";
+modal.style.display = "flex";
 renderChart(labels, values);
 
 }
 
-modalEl.onclick = (e)=>{
-if(e.target === modalEl){
-modalEl.style.display = "none";
+modal.onclick = (e)=>{
+if(e.target === modal){
+modal.style.display = "none";
 }
 };
 
 //
-// 🌐 load principal
+// 🌐 LOAD
 //
 async function load(){
 
@@ -290,7 +239,7 @@ q.innerHTML = "<tr><td>Erro ao carregar dados</td></tr>";
 }
 
 //
-// 🖱️ click -> gráfico
+// 🖱️ CLICK
 //
 document.addEventListener("click", async (e)=>{
 
