@@ -7,7 +7,7 @@
 <style>
 body{
     margin:0;
-    padding:14px;
+    padding:8px;
     font-family:Arial,sans-serif;
     background:#f6f7f9;
     display:flex;
@@ -16,79 +16,93 @@ body{
 
 .wrapper{
     width:100%;
-    max-width:600px;
+    max-width:420px;
+    font-size:14px;
 }
 
 table{
     width:100%;
-    border-spacing:0 10px;
+    border-spacing:0 6px;
 }
 
 .card{
     background:#fff;
-    border-radius:10px;
-    box-shadow:0 1px 4px rgba(0,0,0,0.08);
+    border-radius:8px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.08);
     cursor:pointer;
-    transition:0.2s;
-}
-
-.card:hover{
-    transform:scale(1.01);
 }
 
 td{
-    padding:12px 14px;
-    vertical-align:middle;
+    padding:8px 10px;
 }
 
 .left{
     display:flex;
     align-items:center;
-    gap:8px;
+    gap:6px;
     font-weight:600;
+    font-size:13px;
 }
 
 .rate{
-    font-size:18px;
     font-weight:700;
+    font-size:15px;
 }
 
 .change{
-    font-size:13px;
-    margin-left:8px;
-    font-weight:600;
+    font-size:11px;
+    margin-left:6px;
 }
 
 .up{ color:#0a8f3c; }
 .down{ color:#c62828; }
 
 img{
-    width:18px;
-    height:13px;
+    width:16px;
+    height:12px;
     object-fit:cover;
     border-radius:2px;
     border:1px solid #ddd;
 }
 
-#chart{
-    margin-top:18px;
+/* ===== POPUP ===== */
+#modal{
+    position:fixed;
+    top:0;left:0;
+    width:100%;height:100%;
+    background:rgba(0,0,0,0.4);
+    display:none;
+    align-items:center;
+    justify-content:center;
+}
+
+#box{
     background:#fff;
-    border-radius:12px;
+    width:90%;
+    max-width:520px;
+    border-radius:10px;
     padding:10px;
-    box-shadow:0 1px 4px rgba(0,0,0,0.08);
+    box-shadow:0 10px 30px rgba(0,0,0,0.2);
+}
+
+canvas{
+    width:100% !important;
+    height:220px !important;
 }
 </style>
-
 </head>
 
 <body>
 
 <div class="wrapper">
-
 <table id="q"></table>
+</div>
 
-<canvas id="chart" height="120"></canvas>
-
+<!-- POPUP -->
+<div id="modal">
+    <div id="box">
+        <canvas id="chart"></canvas>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -96,17 +110,17 @@ img{
 <script>
 
 const q = document.getElementById("q");
+const modal = document.getElementById("modal");
 const ctx = document.getElementById("chart");
 
 let chart = null;
-let currentPair = "USD-BRL";
 
-// FIX BANDEIRA
-const flag = (c) =>
-  `https://flagcdn.com/h20/${c}.png`;
+// flags consistentes
+const flag = c =>
+`https://flagcdn.com/h20/${c}.png`;
 
-// CARD
-function card(flag1, flag2, name, price, pct, key){
+// card compacto
+function card(a,b,name,price,pct,key){
 
 const up = Number(pct) >= 0;
 
@@ -114,50 +128,42 @@ return `
 <tr class="card" data-pair="${key}">
 <td>
 <div class="left">
-<img src="${flag(flag1)}">
-<img src="${flag(flag2)}">
+<img src="${flag(a)}">
+<img src="${flag(b)}">
 ${name}
 </div>
 </td>
 
 <td>
 <span class="rate">${Number(price).toFixed(4)}</span>
-<span class="change ${up ? 'up':'down'}">
-${up ? '▲' : '▼'}
-${up ? '+' : ''}${Number(pct).toFixed(2)}%
+<span class="${up?'up':'down'}">
+${up?'▲':'▼'}${Number(pct).toFixed(2)}%
 </span>
 </td>
 </tr>`;
 }
 
-// 🔥 GRÁFICO FUNCIONANDO 100%
-function renderChart(pair, basePrice){
+// gráfico simulado estável
+function renderChart(pair, price){
 
-// simula intraday REALISTA (estável e leve)
 const labels = [];
 const values = [];
 
-let price = Number(basePrice);
+let p = Number(price);
 
-// gera 30 pontos “tipo mercado”
-for(let i=29;i>=0;i--){
-
-const time = `${i*30}m`;
-
-price += (Math.random()-0.5)*0.01; // variação leve
-
-labels.push(time);
-values.push(price);
+for(let i=30;i>=0;i--){
+p += (Math.random()-0.5)*0.01;
+labels.push(`${i}m`);
+values.push(p);
 }
 
 if(chart) chart.destroy();
 
-chart = new Chart(ctx, {
+chart = new Chart(ctx,{
 type:'line',
 data:{
 labels,
 datasets:[{
-label:pair,
 data:values,
 borderColor:'#1a73e8',
 backgroundColor:'rgba(26,115,232,0.1)',
@@ -166,40 +172,48 @@ pointRadius:0
 }]
 },
 options:{
-responsive:true,
-plugins:{ legend:{display:false} },
-interaction:{ mode:'index', intersect:false },
+plugins:{legend:{display:false}},
+interaction:{mode:'index',intersect:false},
 scales:{
-x:{ display:false },
-y:{ display:true }
+x:{display:false},
+y:{display:true}
 }
 }
 });
-
 }
 
-// MAIN LOAD
+// abrir popup
+function openModal(pair, price){
+modal.style.display = "flex";
+renderChart(pair, price);
+}
+
+// fechar popup
+modal.onclick = (e)=>{
+if(e.target === modal){
+modal.style.display = "none";
+}
+};
+
+// load API
 async function load(){
 
 const r = await fetch(
 "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,USD-EUR",
-{ cache:"no-store" }
+{cache:"no-store"}
 );
 
 const d = await r.json();
 
 q.innerHTML =
-card("us","br","USD/BRL", d.USDBRL.bid, d.USDBRL.pctChange,"USD-BRL") +
-card("eu","br","EUR/BRL", d.EURBRL.bid, d.EURBRL.pctChange,"EUR-BRL") +
-card("us","eu","USD/EUR", d.USDEUR.bid, d.USDEUR.pctChange,"USD-EUR");
-
-// gráfico inicial garantido
-renderChart("USD-BRL", d.USDBRL.bid);
+card("us","br","USD/BRL",d.USDBRL.bid,d.USDBRL.pctChange,"USD-BRL") +
+card("eu","br","EUR/BRL",d.EURBRL.bid,d.EURBRL.pctChange,"EUR-BRL") +
+card("us","eu","USD/EUR",d.USDEUR.bid,d.USDEUR.pctChange,"USD-EUR");
 
 }
 
-// 🔥 HOVER FUNCIONANDO DE VERDADE
-document.addEventListener("mouseover",(e)=>{
+// clique abre popup
+document.addEventListener("click",(e)=>{
 
 const row = e.target.closest("tr");
 if(!row) return;
@@ -207,15 +221,12 @@ if(!row) return;
 const pair = row.dataset.pair;
 if(!pair) return;
 
-// pega valor atual da tabela
-const priceEl = row.querySelector(".rate");
-if(!priceEl) return;
+const price = row.querySelector(".rate").textContent;
 
-renderChart(pair, priceEl.textContent);
+openModal(pair, price);
 
 });
 
-// init
 load();
 setInterval(load,60000);
 
