@@ -12,31 +12,41 @@ body{
     display:flex;
     justify-content:center;
 }
+
 table{
     border-collapse:collapse;
 }
+
 td{
     padding:6px 8px;
     white-space:nowrap;
     vertical-align:middle;
 }
+
 .rate{
     font-weight:700;
 }
+
 .change{
     font-size:14px;
     margin-left:6px;
     font-weight:600;
 }
+
 .up{
     color:#006400;
 }
+
 .down{
     color:#8B0000;
 }
+
 img{
-    height:16px;
+    height:14px;
+    width:auto;
     vertical-align:-2px;
+    border:1px solid #d0d0d0;
+    border-radius:2px;
 }
 </style>
 </head>
@@ -51,24 +61,24 @@ async function c(){
 try{
 
 const r = await fetch(
-  "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,USD-EUR"
+    "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,USD-EUR"
 );
 
 const d = await r.json();
 
-function linha(flag1,flag2,nome,cotacao,pct,casas){
+function linha(flag1,flag2,nome,cotacao,pct){
 
     const up = pct >= 0;
 
     return `
     <tr>
         <td>
-            <img src="https://flagcdn.com/16x12/${flag1}.png">
-            <img src="https://flagcdn.com/16x12/${flag2}.png">
+            <img src="https://flagcdn.com/w40/${flag1}.png">
+            <img src="https://flagcdn.com/w40/${flag2}.png">
             ${nome}
         </td>
         <td>
-            <span class="rate">${cotacao.toFixed(casas)}</span>
+            <span class="rate">${cotacao.toFixed(4)}</span>
             <span class="change ${up ? 'up' : 'down'}">
                 ${up ? '▲' : '▼'}
                 ${up ? '+' : ''}${pct.toFixed(2)}%
@@ -83,24 +93,21 @@ q.innerHTML =
         "br",
         "USD/BRL",
         Number(d.USDBRL.bid),
-        Number(d.USDBRL.pctChange),
-        4
+        Number(d.USDBRL.pctChange)
     ) +
     linha(
         "eu",
         "br",
         "EUR/BRL",
         Number(d.EURBRL.bid),
-        Number(d.EURBRL.pctChange),
-        4
+        Number(d.EURBRL.pctChange)
     ) +
     linha(
         "us",
         "eu",
         "USD/EUR",
         Number(d.USDEUR.bid),
-        Number(d.USDEUR.pctChange),
-        3
+        Number(d.USDEUR.pctChange)
     );
 
 }catch(e){
