@@ -3,84 +3,34 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<title>Cotações</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-body{
-    font-family: Arial, sans-serif;
-    padding: 20px;
-    max-width: 300px;
-}
-
-table{
-    width:100%;
-}
-
-td{
-    padding:6px;
-}
-
-td:last-child{
-    text-align:right;
-    font-weight:bold;
-}
-
-#status{
-    color:#666;
-    margin-top:10px;
-    font-size:12px;
-}
+body{margin:0;padding:4px;font-family:Arial,sans-serif}
+table{width:100%;border-collapse:collapse}
+td{padding:4px 0;vertical-align:middle}
+td:last-child{text-align:right;font-weight:700}
+img{height:12px;vertical-align:middle}
 </style>
-
 </head>
 <body>
-
-<h3>Cotações</h3>
-
-<table id="quotes">
-<tr><td colspan="2">Carregando...</td></tr>
-</table>
-
-<div id="status"></div>
-
+<table id="q"><tr><td>Carregando...</td></tr></table>
 <script>
-async function carregar() {
-
-    try {
-
-        const r = await fetch(
-            "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL"
-        );
-
-        const d = await r.json();
-
-        const usdbrl = Number(d.USDBRL.bid);
-        const eurbrl = Number(d.EURBRL.bid);
-
-        const usdeur = usdbrl / eurbrl;
-
-        document.getElementById("quotes").innerHTML = `
-            <tr><td>🇺🇸🇧🇷 USD/BRL</td><td>${usdbrl.toFixed(4)}</td></tr>
-            <tr><td>🇪🇺🇧🇷 EUR/BRL</td><td>${eurbrl.toFixed(4)}</td></tr>
-            <tr><td>🇺🇸🇪🇺 USD/EUR</td><td>${usdeur.toFixed(4)}</td></tr>
-        `;
-
-        document.getElementById("status").textContent =
-            "Atualizado: " + new Date().toLocaleTimeString("pt-BR");
-
-    } catch (e) {
-
-        console.error(e);
-
-        document.getElementById("quotes").innerHTML =
-            "<tr><td colspan='2'>Erro ao carregar.</td></tr>";
-    }
-}
-
-carregar();
+async function c(){
+try{
+const r=await fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL");
+const d=await r.json();
+const usd=Number(d.USDBRL.bid);
+const eur=Number(d.EURBRL.bid);
+const ue=usd/eur;
+q.innerHTML=`
+<tr><td><img src="https://flagcdn.com/16x12/us.png"> <img src="https://flagcdn.com/16x12/br.png"> USD/BRL</td><td>${usd.toFixed(4)}</td></tr>
+<tr><td><img src="https://flagcdn.com/16x12/eu.png"> <img src="https://flagcdn.com/16x12/br.png"> EUR/BRL</td><td>${eur.toFixed(4)}</td></tr>
+<tr><td><img src="https://flagcdn.com/16x12/us.png"> <img src="https://flagcdn.com/16x12/eu.png"> USD/EUR</td><td>${ue.toFixed(4)}</td></tr>`;
+}catch{
+q.innerHTML="<tr><td>Erro ao carregar</td></tr>";
+}}
+c();
+setInterval(c,300000);
 </script>
-
 </body>
 </html>
